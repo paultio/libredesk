@@ -238,10 +238,12 @@ func (m *Manager) RenderMessageInTemplate(channel string, message *models.Messag
 
 		data := map[string]any{
 			"Conversation": map[string]any{
-				"ReferenceNumber": conversation.ReferenceNumber,
-				"Subject":         conversation.Subject.String,
-				"Priority":        conversation.Priority.String,
-				"UUID":            conversation.UUID,
+				"ReferenceNumber":    conversation.ReferenceNumber,
+				"Subject":            conversation.Subject.String,
+				"Priority":           conversation.Priority.String,
+				"UUID":               conversation.UUID,
+				"PreviousMessage":    conversation.LastInteraction.String,
+				"LastIncomingMessage": m.GetLastIncomingMessage(conversation.ID),
 			},
 			"Contact": map[string]any{
 				"FirstName": conversation.Contact.FirstName,

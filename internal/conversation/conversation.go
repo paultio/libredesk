@@ -237,6 +237,7 @@ type queries struct {
 	DeleteStaleDrafts       *sqlx.Stmt `query:"delete-stale-drafts"`
 
 	// Message queries.
+	GetLastIncomingMessage             *sqlx.Stmt `query:"get-last-incoming-message"`
 	GetMessage                         *sqlx.Stmt `query:"get-message"`
 	GetMessages                        string     `query:"get-messages"`
 	GetOutgoingPendingMessages         *sqlx.Stmt `query:"get-outgoing-pending-messages"`
@@ -484,6 +485,16 @@ func (c *Manager) UpdateConversationLastMessage(conversation int, conversationUU
 		return err
 	}
 	return nil
+}
+
+// GetLastIncomingMessage returns the text content of the most recent incoming (non-private) message for a conversation.
+func (c *Manager) GetLastIncomingMessage(conversationID int) string {
+	var content string
+	if err := c.q.GetLastIncomingMessage.Get(&content, conversationID); err != nil {
+		c.lo.Error("error fetching last incoming message", "conversation_id", conversationID, "error", err)
+		return ""
+	}
+	return content
 }
 
 // UpdateConversationFirstReplyAt updates the first reply timestamp for a conversation.
@@ -868,10 +879,12 @@ func (m *Manager) NotifyAssignment(userIDs []int, conversation models.Conversati
 	content, subject, err := m.template.RenderStoredEmailTemplate(template.TmplConversationAssigned,
 		map[string]any{
 			"Conversation": map[string]any{
-				"ReferenceNumber": conversation.ReferenceNumber,
-				"Subject":         conversation.Subject.String,
-				"Priority":        conversation.Priority.String,
-				"UUID":            conversation.UUID,
+				"ReferenceNumber":    conversation.ReferenceNumber,
+				"Subject":            conversation.Subject.String,
+				"Priority":           conversation.Priority.String,
+				"UUID":               conversation.UUID,
+				"PreviousMessage":    conversation.LastInteraction.String,
+				"LastIncomingMessage": m.GetLastIncomingMessage(conversation.ID),
 			},
 			"Contact": map[string]any{
 				"FirstName": conversation.Contact.FirstName,
@@ -974,10 +987,12 @@ func (m *Manager) NotifyMention(conversationUUID string, message models.Message,
 			content, subject, err := m.template.RenderStoredEmailTemplate(template.TmplMentioned,
 				map[string]any{
 					"Conversation": map[string]any{
-						"ReferenceNumber": conversation.ReferenceNumber,
-						"Subject":         conversation.Subject.String,
-						"Priority":        conversation.Priority.String,
-						"UUID":            conversation.UUID,
+						"ReferenceNumber":    conversation.ReferenceNumber,
+						"Subject":            conversation.Subject.String,
+						"Priority":           conversation.Priority.String,
+						"UUID":               conversation.UUID,
+						"PreviousMessage":    conversation.LastInteraction.String,
+						"LastIncomingMessage": m.GetLastIncomingMessage(conversation.ID),
 					},
 					"Recipient": map[string]any{
 						"FirstName": recipient.FirstName,

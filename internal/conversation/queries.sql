@@ -423,6 +423,14 @@ WHERE m.id = $1;
 -- name: delete-conversation
 DELETE FROM conversations WHERE uuid = $1;
 
+-- name: get-last-incoming-message
+SELECT COALESCE(
+    (SELECT text_content FROM conversation_messages
+     WHERE conversation_id = $1 AND type = 'incoming' AND private = false
+     ORDER BY id DESC LIMIT 1),
+    ''
+);
+
 -- MESSAGE queries.
 -- name: get-message-source-ids
 SELECT 
